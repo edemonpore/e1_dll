@@ -1,0 +1,20 @@
+# depslib dependency file v1.0
+1553039964 source:c:\users\user\desktop\demonpore\cprograms\e1_dll\e1_dll.cpp
+	<iostream>
+	"stdio.h"
+	"windows.h"
+	"edl.h"
+
+1529724860 c:\users\user\desktop\demonpore\cprograms\e1_dll\edl\edl.h
+	<vector>
+	<string>
+	"edl_global.h"
+	"edl_errorcodes.h"
+	"edl_devicespecs.h"
+
+1512677914 c:\users\user\desktop\demonpore\cprograms\e1_dll\edl\edl_global.h
+
+1522263502 c:\users\user\desktop\demonpore\cprograms\e1_dll\edl\edl_errorcodes.h
+
+1529725100 c:\users\user\desktop\demonpore\cprograms\e1_dll\edl\edl_devicespecs.h
+

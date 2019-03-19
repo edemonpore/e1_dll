@@ -1,67 +1,93 @@
-/*! \file caller.cpp
- * \brief Sample program to connect to an eONE-HS device, set a working configuration and read some data.
- */
+/* e1_dll.cpp
+Created from caller.cpp to provide function API to be used in python
+EYafuso 2019 */
+
 #include <iostream>
 #include "stdio.h"
 #include "windows.h"
 #include "edl.h"
 
-
 #define MINIMUM_DATA_PACKETS_TO_READ 10
 
-
-void configureWorkingModality() {
-	/*! Declare an #EdlCommandStruct_t to be used as configuration for the commands. */
+extern "C" __declspec(dllexport) int setSampleRate(int nSampleRate)
+{
     EdlCommandStruct_t commandStruct;
+    EdlErrorCode_t res;
 
-	/*! Set the sampling rate to 5kHz. Stack the command (do not apply). */
-    commandStruct.radioId = EDL_RADIO_SAMPLING_RATE_5_KHZ;
-    setCommand(EdlCommandSamplingRate, commandStruct, false);
+    if (nSampleRate < 1 || nSampleRate > 6) {return -1;}
+    commandStruct.radioId = nSampleRate;
+    res = setCommand(EdlCommandSamplingRate, commandStruct, true);
+    if (res != 0) {return res;}
 
-	/*! Set the current range to 200pA. Stack the command (do not apply). */
-    commandStruct.radioId = EDL_RADIO_RANGE_200_PA;
-    setCommand(EdlCommandRange, commandStruct, false);
-
-	/*! Disable current filters (final bandwidth equal to half sampling rate). Apply all of the stacked commands. */
-    commandStruct.radioId = EDL_RADIO_FINAL_BANDWIDTH_SR_2;
-    setCommand(EdlCommandFinalBandwidth, commandStruct, true);
+    return 0;
 }
 
-/*! \fn compensateDigitalOffset
- * \brief Compensate digital offset due to electrical load.
- */
-void compensateDigitalOffset() {
-	/*! Declare an #EdlCommandStruct_t to be used as configuration for the commands. */
+extern "C" __declspec(dllexport) int setRange(int nRange)
+{
     EdlCommandStruct_t commandStruct;
+    EdlErrorCode_t res;
+
+    if (nRange < 0 || nRange > 1) {return -1;}
+    commandStruct.radioId = nRange;
+    res = setCommand(EdlCommandRange, commandStruct, false);
+    if (res != 0) {return res;}
+
+    return 0;
+}
+
+extern "C" __declspec(dllexport) int setBandwidth(int nBandwidth)
+{
+    EdlCommandStruct_t commandStruct;
+    EdlErrorCode_t res;
+
+    if (nBandwidth < 0 || nBandwidth > 3) {return -1;}
+
+    commandStruct.radioId = nBandwidth;
+    res = setCommand(EdlCommandFinalBandwidth, commandStruct, true);
+    if (res != 0) {return res;}
+
+    return 0;
+}
+
+
+extern "C" __declspec(dllexport) int compensateDigitalOffset()
+{
+    EdlCommandStruct_t commandStruct;
+    EdlErrorCode_t res;
 
 	/*! Select the constant protocol: protocol 0. */
     commandStruct.value = 0.0;
-    setCommand(EdlCommandMainTrial, commandStruct, false);
+    res = setCommand(EdlCommandMainTrial, commandStruct, false);
+    if (res != 0) {return res;}
 
 	/*! Set the vHold to 0mV. */
     commandStruct.value = 0.0;
-    setCommand(EdlCommandVhold, commandStruct, false);
+    res = setCommand(EdlCommandVhold, commandStruct, false);
+    if (res != 0) {return res;}
 
 	/*! Apply the protocol. */
-    setCommand(EdlCommandApplyProtocol, commandStruct, true);
+    res = setCommand(EdlCommandApplyProtocol, commandStruct, true);
+    if (res != 0) {return res;}
 
 	/*! Start the digital compensation. */
     commandStruct.checkboxChecked = EDL_CHECKBOX_CHECKED;
-    setCommand(EdlCommandDigitalCompensation, commandStruct, true);
+    res = setCommand(EdlCommandDigitalCompensation, commandStruct, true);
+    if (res != 0) {return res;}
 
 	/*! Wait for some seconds. */
 	Sleep(5000);
 
 	/*! Stop the digital compensation. */
     commandStruct.checkboxChecked = EDL_CHECKBOX_UNCHECKED;
-    setCommand(EdlCommandDigitalCompensation, commandStruct, true);
+    res = setCommand(EdlCommandDigitalCompensation, commandStruct, true);
+    if (res != 0) {return res;}
+
+    return 0;
 }
 
-/*! \fn setSealTestProtocol
- * \brief Set the parameters and start a seal test protocol.
- */
-void setSealTestProtocol() {
-    /*! Declare an #EdlCommandStruct_t to be used as configuration for the commands. */
+
+void setSealTestProtocol()
+{
     EdlCommandStruct_t commandStruct;
 
     /*! Select the seal test protocol: protocol 1. */
@@ -88,11 +114,8 @@ void setSealTestProtocol() {
     setCommand(EdlCommandApplyProtocol, commandStruct, true);
 }
 
-/*! \fn readAndSaveSomeData
- * \brief Reads data from the EDL device and writes them on an open file.
- */
-EdlErrorCode_t readAndSaveSomeData(FILE * f) {
-    /*! Declare an #EdlErrorCode_t to be returned from #EDL methods. */
+EdlErrorCode_t readAndSaveSomeData(FILE * f)
+{
     EdlErrorCode_t res;
 
 	/*! Declare an #EdlDeviceStatus_t variable to collect the device status. */
@@ -116,15 +139,10 @@ EdlErrorCode_t readAndSaveSomeData(FILE * f) {
         return res;
     }
 
-	/*! Start collecting data. */
-
     std::cout << "collecting data... ";
 	unsigned int c;
     for (c = 0; c < 1e3; c++) {
-		/*! Get current status to know the number of available data packets EdlDeviceStatus_t::availableDataPackets. */
         res = getDeviceStatus(status);
-
-        /*! If the getDeviceStatus returns an error code output an error and return. */
         if (res != EdlSuccess) {
             std::cout << "failed to get device status" << std::endl;
             return res;
@@ -164,9 +182,7 @@ EdlErrorCode_t readAndSaveSomeData(FILE * f) {
                         fwrite((unsigned char *)&data.at(readPacketsIdx*EDL_CHANNEL_NUM+channelIdx), sizeof(float), 1, f);
                     }
                 }
-
 			}
-
         } else {
 		    /*! If the read was not performed wait 1 ms before trying to read again. */
             Sleep(1);
@@ -177,93 +193,58 @@ EdlErrorCode_t readAndSaveSomeData(FILE * f) {
     return res;
 }
 
-/*! \fn main
- * \brief Application entry point.
- */
-int main() {
-	/*! Initialization. */
+void configureWorkingModality() {
+	/*! Declare an #EdlCommandStruct_t to be used as configuration for the commands. */
+    EdlCommandStruct_t commandStruct;
+
+	/*! Set the sampling rate to 5kHz. Stack the command (do not apply). */
+    commandStruct.radioId = EDL_RADIO_SAMPLING_RATE_5_KHZ;
+    setCommand(EdlCommandSamplingRate, commandStruct, false);
+
+	/*! Set the current range to 200pA. Stack the command (do not apply). */
+    commandStruct.radioId = EDL_RADIO_RANGE_200_PA;
+    setCommand(EdlCommandRange, commandStruct, false);
+
+	/*! Disable current filters (final bandwidth equal to half sampling rate). Apply all of the stacked commands. */
+    commandStruct.radioId = EDL_RADIO_FINAL_BANDWIDTH_SR_2;
+    setCommand(EdlCommandFinalBandwidth, commandStruct, true);
+}
+
+extern "C" __declspec(dllexport) int initEDL()
+{
     init();
 
-	/*! Declare an #EdlErrorCode_t to be returned from #EDL methods. */
     EdlErrorCode_t res;
 
-	/*! Initialize a vector of strings to collect the detected devices. */
     std::vector <std::string> devices;
-
     std::ios::sync_with_stdio(true);
 
-	/*! Detect plugged in devices. */
     res = detectDevices(devices);
+    if (res != EdlSuccess) {return res;}
 
-	/*! If none is found output an error and return. */
-    if (res != EdlSuccess) {
-        std::cout << "could not detect devices" << std::endl;
-        return -1;
-    }
-
-    std::cout << "first device found " << devices.at(0) << std::endl;
-
-	/*! If at list one device is found connect to the first one. */
     res = connectDevice(devices.at(0));
+    if (res != EdlSuccess) {return res;}
 
-    std::cout << "connecting... ";
-	/*! If the connectDevice returns an error code output an error and return. */
-    if (res != EdlSuccess) {
-        std::cout << "connection error" << std::endl;
-        return -1;
-    }
-	std::cout << "done" << std::endl;
-
-	/*! Configure the device working modality. */
-    std::cout << "configuring working modality" << std::endl;
     configureWorkingModality();
 
-	/*! Compensate for digital offset. */
-	std::cout << "performing digital offset compensation... ";
     compensateDigitalOffset();
-	std::cout << "done" << std::endl;
-
-    std::cout << "applying seal test protocol" << std::endl;
-    /*! Apply a seal test protocol. */
-    setSealTestProtocol();
-
-	/*! Initialize a file descriptor to store the read data packets. */
-    FILE * f;
-    f = fopen("data.dat", "wb+");
-
-    res = readAndSaveSomeData(f);
-    if (res != EdlSuccess) {
-        std::cout << "failed to read data" << std::endl;
-        return -1;
-    }
-
-	/*! Close the file for data storage. */
-    fclose(f);
-
-	/*! Try to disconnect the device.
-	 * \note Data reading is performed in a separate thread started by connectDevice.
-	 * The while loop may be useful in case few operations are performed between before calling disconnectDevice,
-	 * to ensure that the connection is fully established before trying to disconnect. */
-
-	std::cout << "disconnecting... ";
-    unsigned int c = 0;
-    while (c++ < 1e3) {
-		res = disconnectDevice();
-		if (res == EdlSuccess) {
-            std::cout << "done" << std::endl;
-			break;
-		}
-
-		/*! If the disconnection was unsuccessful wait 1 ms before trying to disconnect again. */
-        Sleep(1);
-    }
-
-	/*! If the disconnectDevice returns an error code after trying for 1 second (1e3 * 1ms) output an error and return. */
-    if (res != EdlSuccess) {
-        std::cout << "disconnection error" << std::endl;
-        return -1;
-    }
 
     return 0;
 }
-/*! [caller_snippet] */
+
+extern "C" __declspec(dllexport) int closeEDL()
+{
+    EdlErrorCode_t res;
+
+    unsigned int c = 0;
+    while (c++ < 1e3)
+    {
+		res = disconnectDevice();
+		if (res == EdlSuccess) {break;}
+        Sleep(1);
+    }
+
+    if (res != EdlSuccess) {return -1;}
+
+    return 0;
+}
